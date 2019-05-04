@@ -66,6 +66,22 @@ describe('register', () => {
       }
     })
   })
+
+  it('fails if unkown error occured', (done) => {
+    // lets stub the generateToken to throw error for register
+    sinon.stub(store, 'exists').callsFake(() => {
+      return Promise.reject("Should produce failure")
+    })
+
+    auth.register("1"+username, password, (err, res) => {
+      if (res)
+        done(new Error("Expected failure to occur"))
+      else {
+        expect(err.msg).to.be.equal("Something went wrong, sorry")
+        done()
+      }
+    })
+  })
 })
 
 describe('login', () => {
