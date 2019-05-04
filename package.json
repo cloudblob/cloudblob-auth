@@ -2,9 +2,13 @@
   "name": "@cloudblob/auth",
   "version": "1.0.0",
   "description": "Auth middleware to use with cloudblob-store.",
-  "main": "index.js",
+  "main": "lib/index.js",
   "author": "Ian Loubser",
   "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^8.5.1"
+  },
   "devDependencies": {
     "@babel/cli": "^7.4.3",
     "@babel/core": "^7.4.3",
@@ -25,10 +29,8 @@
   "scripts": {
     "test": "nyc mocha --require @babel/register test/",
     "test:report": "nyc report --reporter=html",
-    "build": "babel ./src -d lib"
-  },
-  "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^8.5.1"
+    "coverage": "nyc report --reporter=text-lcov | coveralls",
+    "build": "babel ./src -d lib",
+    "prepublish": "yarn build"
   }
 }
