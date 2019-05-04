@@ -2,34 +2,18 @@
 /**
  * Auth routes & middelware to use with cloudblob-server or serverless
  */
-var jwt = require('jsonwebtoken')
-var bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
+const bcrypt = require('bcryptjs')
 
-// This key should be overriden for production using the 'configure' helper.
-var secretKey = null
 
-// this namespace just stores an entity with bcrypt password.
-var authNamespace = "auth"
-var tokenExpiry = 24 * 60 * 60 // Defaults to 1 day
-var store = null
+function Auth() { 
+  // This key should be overriden for production using the 'configure' helper.
+  this.secretKey = null
 
-/**
- * Configure store and JWT defaults to use for auth. 
- * 
- * @param {Object} config Configuration to use for auth & JWT lib.
- */
-function configure(config) {
-  secretKey = config.secret;
-  store = config.storeDB
-
-  if (!secretKey)
-    throw new Error("Expected auth secret to be configured.")
-
-  if (!store)
-    throw new Error("Expected auth storeDB to be configured.")
-
-  tokenExpiry = config.tokenExpiry
-  authNamespace = config.authNamespace
+  // this namespace just stores an entity with bcrypt password.
+  this.authNamespace = "auth"
+  this.tokenExpiry = 24 * 60 * 60 // Defaults to 1 day
+  this.store = null
 }
 
 /**
@@ -38,9 +22,9 @@ function configure(config) {
  * @param {Object} payload 
  * @returns A signed JWT
  */
-function generateToken(payload) {
-  return jwt.sign(payload, secretKey, {
-    expiresIn:  tokenExpiry
+Auth.prototype.generateToken = function(payload) {
+  return jwt.sign(payload, this.secretKey, {
+    expiresIn: this.tokenExpiry
   })
 }
 
@@ -51,14 +35,14 @@ function generateToken(payload) {
  * @param {String} password User password as plaintext string
  * @param {Function} cb Callback function
  */
-function login(username, password, cb) {
-  if (!store) throw new Error("You need to call 'configure' first before using the login helper.");
+Auth.prototype.login = function(username, password, cb) {
+  if (!this.store) throw new Error("You need to call 'configure' first before using the login helper.");
 
-  store.get(authNamespace, username).then(auth => {
+  this.store.get(this.authNamespace, username).then(auth => {
     bcrypt.compare(password, auth.password).then(res => {
       if (res) {
         cb(null, {
-          token: generateToken({roles: auth.roles, permissions: auth.permissions})
+          token: this.generateToken({roles: auth.roles, permissions: auth.permissions})
         })
       } else {
         cb({
@@ -84,25 +68,25 @@ function login(username, password, cb) {
  * @param {String} password User password as plaintext string
  * @param {Function} cb Callback function
  */
-function register(username, password, cb) {
-  if (!store) throw new Error("You need to call 'configure' first before using the register helper.");
+Auth.prototype.register = function(username, password, cb) {
+  if (!this.store) throw new Error("You need to call 'configure' first before using the register helper.");
 
-  store.exists(authNamespace, username).then(exist => {
+  this.store.exists(this.authNamespace, username).then(exist => {
     if (exist) {
       cb({
-        msg: `User credentials ${username} already exist`
+        msg: `User credentials ${username} already exists`
       })
     } else {
       // create the new user storing encrypted password.
       var pw = bcrypt.hashSync(password)
-      store.put(authNamespace, {
+      this.store.put(this.authNamespace, {
         username: username,
         password: pw, 
         roles: [], 
         permissions: []
-      }).then(res => {
+      }, username).then(res => {
         cb(null, {
-          token: generateToken({roles: res.roles, permissions: res.permissions})
+          token: this.generateToken({roles: res.roles, permissions: res.permissions})
         })
       })
     }
@@ -114,6 +98,44 @@ function register(username, password, cb) {
   })
 }
 
+/**
+ * Configure store and JWT defaults to use for auth. 
+ * 
+ * @param {Object} config Configuration to use for auth & JWT lib.
+ */
+function configure(config) {
+  var auth = new Auth();
+  auth.secretKey = config.secret;
+  auth.store = config.storeDB
+
+  if (!auth.secretKey)
+    throw new Error("Expected auth secret to be specified.")
+
+  if (!auth.store)
+    throw new Error("Expected auth storeDB to be specified.")
+
+  auth.tokenExpiry = config.tokenExpiry || auth.tokenExpiry
+  auth.authNamespace = config.authNamespace || auth.authNamespace
+
+  auth.store.namespaces[auth.authNamespace] = {
+    ref: "username"
+  }
+
+  return auth
+}
+
 module.exports.configure = configure
-module.exports.register = register
-module.exports.login = login
+
+// var auth = require('@cloudblob/auth')
+
+// auth.configure()
+
+// auth.login()
+
+// return object of functions
+
+// auth.configure({
+
+// })
+
+// auth.
