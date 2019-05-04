@@ -1,100 +1,118 @@
+"use strict";
 /**
- * Auth routes & middelware to use with clob-server.
+ * Auth routes & middelware to use with cloudblob-server or serverless
  */
 var jwt = require('jsonwebtoken')
 var bcrypt = require('bcryptjs')
 
-
-var jwt = require('jsonwebtoken');
-var bcrypt = require('bcryptjs');
-
-// CHANGE THIS KEY FOR YOUR PRODUCTION USE
-var secretKey = "secretkey123456"
+// This key should be overriden for production using the 'configure' helper.
+var secretKey = null
 
 // this namespace just stores an entity with bcrypt password.
-var authNamespace = "user/auth"
-
-var tokenExpiry = 24 * 60 * 60 // 1 day
-
+var authNamespace = "auth"
+var tokenExpiry = 24 * 60 * 60 // Defaults to 1 day
 var store = null
 
-
+/**
+ * Configure store and JWT defaults to use for auth. 
+ * 
+ * @param {Object} config Configuration to use for auth & JWT lib.
+ */
 function configure(config) {
-  secretKey = config.secretKey;
+  secretKey = config.secret;
   store = config.storeDB
+
+  if (!secretKey)
+    throw new Error("Expected auth secret to be configured.")
+
+  if (!store)
+    throw new Error("Expected auth storeDB to be configured.")
+
   tokenExpiry = config.tokenExpiry
   authNamespace = config.authNamespace
 }
 
+/**
+ * Signs a payload and return JWT.
+ * 
+ * @param {Object} payload 
+ * @returns A signed JWT
+ */
 function generateToken(payload) {
   return jwt.sign(payload, secretKey, {
     expiresIn:  tokenExpiry
   })
 }
 
+/**
+ * Helper to login and return JWT for valid user.
+ *  
+ * @param {String} username Unique username string
+ * @param {String} password User password as plaintext string
+ * @param {Function} cb Callback function
+ */
+function login(username, password, cb) {
+  if (!store) throw new Error("You need to call 'configure' first before using the login helper.");
 
-function login(req, res) {
-  store.get(authNamespace, req.body.username).then(auth => {
-    bcrypt.compare(req.body.password, auth.password).then(res => {
+  store.get(authNamespace, username).then(auth => {
+    bcrypt.compare(password, auth.password).then(res => {
       if (res) {
-        res.json({
-          success: true,
+        cb(null, {
           token: generateToken({roles: auth.roles, permissions: auth.permissions})
         })
       } else {
-        res.status(400)
-        res.json({
-          success: false,
+        cb({
           msg: "Invalid credentials"
         })
       }
     })
   }).catch(err => {
-    // if something went wrong it's assumed user doesn't exist.
-    res.status(400)
-    res.json({
-      success: false,
+    // if something went wrong it's assumed user doesn't exist or there
+    // is an issue with their account.
+    console.error(err)
+    cb({
       msg: "Invalid credentials"
     })
   })
 }
 
 
-function register(req, res) {
-  store.exists(authNamespace, req.body.username).then(exist => {
+/**
+ * Helper for checking if user account exists, and registers account if it doesn't.
+ * 
+ * @param {String} username Unique username string
+ * @param {String} password User password as plaintext string
+ * @param {Function} cb Callback function
+ */
+function register(username, password, cb) {
+  if (!store) throw new Error("You need to call 'configure' first before using the register helper.");
+
+  store.exists(authNamespace, username).then(exist => {
     if (exist) {
-      res.status(400)
-      res.json({
-        success: false,
-        msg: `User credentials ${req.body.username} already exist`
+      cb({
+        msg: `User credentials ${username} already exist`
       })
     } else {
-      // create the new user
-      var pw = bcrypt.hashSync(req.body.password)
+      // create the new user storing encrypted password.
+      var pw = bcrypt.hashSync(password)
       store.put(authNamespace, {
-        username: req.body.username,
+        username: username,
         password: pw, 
         roles: [], 
         permissions: []
       }).then(res => {
-        res.json({
-          success: true,
+        cb(null, {
           token: generateToken({roles: res.roles, permissions: res.permissions})
         })
       })
     }
   }).catch(err => {
     console.error(err)
-    res.status(500)
-    res.json({
-      success: false,
+    cb({
       msg: "Something went wrong, sorry"
     })
   })
 }
-
-// jwtMiddleware
-
 
 module.exports.configure = configure
 module.exports.register = register
