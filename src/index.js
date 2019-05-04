@@ -36,8 +36,6 @@ Auth.prototype.generateToken = function(payload) {
  * @param {Function} cb Callback function
  */
 Auth.prototype.login = function(username, password, cb) {
-  if (!this.store) throw new Error("You need to call 'configure' first before using the login helper.");
-
   this.store.get(this.authNamespace, username).then(auth => {
     bcrypt.compare(password, auth.password).then(res => {
       if (res) {
@@ -69,8 +67,6 @@ Auth.prototype.login = function(username, password, cb) {
  * @param {Function} cb Callback function
  */
 Auth.prototype.register = function(username, password, cb) {
-  if (!this.store) throw new Error("You need to call 'configure' first before using the register helper.");
-
   this.store.exists(this.authNamespace, username).then(exist => {
     if (exist) {
       cb({
@@ -125,17 +121,3 @@ function configure(config) {
 }
 
 module.exports.configure = configure
-
-// var auth = require('@cloudblob/auth')
-
-// auth.configure()
-
-// auth.login()
-
-// return object of functions
-
-// auth.configure({
-
-// })
-
-// auth.

@@ -24,6 +24,7 @@
   },
   "scripts": {
     "test": "nyc mocha --require @babel/register test/",
+    "test:report": "nyc report --reporter=html",
     "build": "babel ./src -d lib"
   },
   "dependencies": {

@@ -69,7 +69,47 @@ describe('register', () => {
 })
 
 describe('login', () => {
-  it('', () => {
+  const store = new Datastore({db: 'example'})
+  const username = "john@example.com"
+  const password = "test1234"
+  const auth = CloudblobAuth.configure({
+    storeDB: store,
+    secret: "1234"
+  })
 
+  before((done) => {
+    auth.register(username, password, (err, res) => {
+      done()
+    })
+  })
+
+  it('fails login if user doesnt exist', (done) => {
+    auth.login(username+"1", password, (err, res) => {
+      if (res)
+        done(new Error("Didn't expect login to pass"))
+      else {
+        expect(err.msg).to.be.equal('Invalid credentials')
+        done()
+      }
+    })
+  })
+
+  it('fails login if user password incorrect', (done) => {
+    auth.login(username, password+"1", (err, res) => {
+      if (res)
+        done(new Error("Didn't expect login to pass"))
+      else {
+        expect(err.msg).to.be.equal('Invalid credentials')
+        done()
+      }
+    })
+  })
+
+  it('succeeds with token if credentials exist', (done) => {
+    auth.login(username, password, (err, res) => {
+      expect(err).to.be.null
+      expect(res.token).to.not.be.undefined
+      done()
+    })
   })
 })
