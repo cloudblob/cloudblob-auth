@@ -29,6 +29,81 @@ Auth.prototype.generateToken = function(payload) {
 }
 
 /**
+ * Verify the JWT
+ * 
+ * @param {String} token The JWT token to verify
+ * @param {Function} cb Callback function gets called with params (error, decoded)
+ */
+Auth.prototype.verifyToken = function(token, cb) {
+  jwt.verify(token, this.secretKey, cb)
+}
+
+/**
+ * Request a password reset token.
+ * 
+ * @param {String} username 
+ * @param {Function} cb Callback function gets called with params (error, decoded)
+ */
+Auth.prototype.passwordChangeToken = function(username, cb) {
+  this.store.get(this.authNamespace, username).then(user => {
+    // we got the user, put a token
+    let resetToken = crypto.randomBytes(32).toString('hex')
+    this.store.put(this.authNamespace+"/token", user, resetToken).then(res => {
+      cb(null, resetToken)
+    }).catch(err => {
+      console.error(err)
+      cb(err)
+    })
+  }).catch(err => {
+    console.error(err)
+    cb(err)
+  })
+}
+
+/**
+ * Check if password reset token exists
+ * 
+ * @param {String} token Reset token to validate
+ * @param {Function} cb Callback function gets called with params (error, decoded)
+ */
+Auth.prototype.validateResetToken = function(token, cb) {
+  this.store.exists(this.authNamespace+"/token", token).then(exists => {
+    cb(null, exists)
+  }).catch(err => {
+    console.error(err)
+    cb(err)
+  })
+}
+
+/**
+ * Change a users password with token provided
+ * 
+ * @param {String} username 
+ * @param {Function} cb Callback function gets called with params (error, decoded)
+ */
+Auth.prototype.changePassword = function(token, password, cb){
+  this.store.get(this.authNamespace+"/token", token).then(user => {
+    // if it gets here, the token & user exists.
+    // hash new password and update the user.
+    var pw = bcrypt.hashSync(password)
+    this.store.put(this.authNamespace, {
+      ...user, password: pw
+    }, user.username).then(auth => {
+      // User update success, return a new generated token
+      // TODO: add code to delete the token once user used it.
+      cb(null, {
+        token: this.generateToken({roles: auth.roles, permissions: auth.permissions})
+      })
+    })
+  }).catch(err => {
+    console.error(err)
+    cb({
+      msg: "Could not change the user password"
+    })
+  })
+}
+
+/**
  * Helper to login and return JWT for valid user.
  *  
  * @param {String} username Unique username string

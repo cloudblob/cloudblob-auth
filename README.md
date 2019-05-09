@@ -1,6 +1,7 @@
 # cloudblob-auth
 [![Build status](https://api.travis-ci.com/cloudblob/cloudblob-auth.svg?branch=master)](https://travis-ci.com/cloudblob/cloudblob-auth/)
 [![Coverage Status](https://coveralls.io/repos/github/cloudblob/cloudblob-auth/badge.svg?branch=master)](https://coveralls.io/github/cloudblob/cloudblob-auth?branch=master)
+[![Maintainability](https://api.codeclimate.com/v1/badges/0948a0f41ad87987c0fb/maintainability)](https://codeclimate.com/github/cloudblob/cloudblob-auth/maintainability)
 
 JWT authorization helpers running on cloudblob-store. Use this library in a serverless project or with [cloudblob-server](https://github.com/cloudblob/cloudblob-server).
 
@@ -60,9 +61,3 @@ auth.login(username, password, function(err, res) {
 })
 
 ```
-
-## Improvements
-
-- Add token refresh helper
-- Add token verify helper
-- Add password reset helper
